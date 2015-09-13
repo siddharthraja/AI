@@ -30,17 +30,28 @@ class Board:
         self.__inactive_player__ = tmp
         self.move_count = self.move_count + 1
 
+    def copy(self):
+        b = Board(self.__player_1__, self.__player_2__, width=self.width, height=self.height)
+        for key, value in self.__last_player_move__.items():
+            b.__last_player_move__[key] = value
+        for key, value in self.__player_symbols__.items():
+            b.__player_symbols__[key] = value
+        b.move_count = self.move_count
+        b.__active_player__ = self.__active_player__
+        b.__inactive_player__ = self.__inactive_player__
+        b.__board_state__ = self.get_state()
+        return b
+
     def forecast_move(self, move):
-        new_board = deepcopy(self)
+        new_board = self.copy()
         new_board.__apply_move__(move)
         return new_board
 
     def is_winner(self, player):
-        return not self.get_legal_moves() and not player== self.__active_player__
+        return not self.get_legal_moves() and player== self.__inactive_player__
 
     def is_opponent_winner(self, player):
         return not self.get_legal_moves() and player== self.__active_player__
-
 
     def get_opponent_moves(self):
         return self.__get_moves__(self.__last_player_move__[self.__inactive_player__])
@@ -88,10 +99,7 @@ class Board:
         return self.get_player_locations(Board.BLANK)
   
     def get_player_locations(self, player):
-        return [ (i,j) for j in range(0, width) for i in range(0,height) if self.__board_state__[i][j] == player]
-
-    def get_board_state(self):
-        return deepcopy(self.__board_state__)
+        return [ (i,j) for j in range(0, self.width) for i in range(0,self.height) if self.__board_state__[i][j] == player]
 
     def print_board(self):
 
@@ -121,7 +129,7 @@ class Board:
         return out
    
     def play_isolation(self, time_limit=500, debug=True):
-        
+        print("#################################################")
         curr_time_millis = lambda : int(round(time() * 1000))
         
         def handler (signum, frame): 
@@ -135,16 +143,16 @@ class Board:
                 print('#'*20)
 
             legal_player_moves =  self.get_legal_moves() 
-
-            signal.signal(signal.SIGALRM, handler)
-            signal.alarm(time_limit/1000)
+            print len(legal_player_moves), legal_player_moves
+            # signal.signal(signal.SIGALRM, handler)
+            # signal.alarm(time_limit/1000)
 
             move_start = curr_time_millis()
            
             time_left = lambda : time_limit - (curr_time_millis() - move_start)
             curr_move = (-1, -1)
             
-            try:    
+            try:
                 curr_move = self.__active_player__.move(self, legal_player_moves, time_left)
             except Exception as e:
                 print(e)
@@ -155,10 +163,10 @@ class Board:
                 return  self.__inactive_player__, self, "%s ran out of time"%str(self.__active_player__)
 
             if not curr_move in legal_player_moves:
-                print("Illegal move at %d,%d"%curr_move)
+                print("Illegal move at %d,%d."%curr_move)
                 print("Player %s wins."%str(self.__player_symbols__[self.__inactive_player__]))
                 return self.__inactive_player__, self, "%s had no valid move"%str(self.__active_player__)
-
+            print curr_move
             self.__apply_move__(curr_move)
 
 
@@ -166,8 +174,8 @@ if __name__ == '__main__':
 
     print("Starting game:")
 
-    from players import RandomPlayer
-    from players import HumanPlayer
+    from player_notebook import RandomPlayer
+    from player_notebook import HumanPlayer
 
     board = Board(RandomPlayer(), HumanPlayer())
     board.play_isolation()

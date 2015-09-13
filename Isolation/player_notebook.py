@@ -9,10 +9,16 @@
 # In[ ]:
 
 from random import randint
+import Queue
 
 class RandomPlayer():
     """Player that chooses a move randomly."""
+    def __init__(self):
+        self.eval_fn = OpenMoveEvalFn()
+
     def move(self, game, legal_moves, time_left):
+        print time_left()
+        print self.eval_fn.score(game)
         if not legal_moves: return (-1,-1)
         return legal_moves[randint(0,len(legal_moves)-1)]
 
@@ -64,8 +70,7 @@ class HumanPlayer():
 class OpenMoveEvalFn():
     
     def score(self, game):
-        # TODO: finish this function!
-        return eval_func
+        return len(game.get_legal_moves())#eval_func
 
 
 #     The following is a 
@@ -79,7 +84,7 @@ class OpenMoveEvalFn():
 class CustomEvalFn():
 
     def score(self, game):
-        return eval_func
+        return len(game.get_legal_moves())
 
 
 # Implement a Player below that chooses a move using 
@@ -98,11 +103,27 @@ class CustomPlayer():
     def __init__(self, search_depth=3, eval_fn=OpenMoveEvalFn()):
         self.eval_fn = eval_fn
         self.search_depth = search_depth
+        self.legal_moves = []
+        self.time_left = None
+        self.tree = None
+
+    """def move(self, game, legal_moves, time_left):
+        self.legal_moves = legal_moves
+        move_scores = []
+        for m in self.legal_moves:
+            move_scores.append(self.utility(game.forecast_move(m)))
+        best_move = self.legal_moves[move_scores.index(max(move_scores))]
+        # best_move, utility = self.minimax(game, depth=self.search_depth)
+        # you will eventually replace minimax with alpha-beta
+        print 'best move determined', best_move, max(move_scores)
+        return best_move"""
 
     def move(self, game, legal_moves, time_left):
-
-        best_move, utility = self.minimax(game, depth=self.search_depth)
-        # you will eventually replace minimax with alpha-beta
+        self.time_left = time_left
+        self.legal_moves = legal_moves
+        self.tree = self.GameTree(self.Node(game, None, 0))
+        self.generate_tree(3)
+        best_move, best_val = self.minimax(game, 3)
         return best_move
 
     def utility(self, game):
@@ -115,14 +136,77 @@ class CustomPlayer():
 
         return self.eval_fn.score(game)
 
+    def generate_tree(self, depth):
+        q = Queue.Queue()
+        q.put(self.tree.root)
+        above_depth = True
+        # Generate Game Tree from depth 2. Depth 1 done.
+        while not q.empty() and above_depth:
+            curr_node = q.get()
+            if curr_node.depth >= depth:
+                above_depth = False
+                continue
+            if curr_node == self.tree.root:
+                l_moves = self.legal_moves
+            else:
+                l_moves = curr_node.game.get_legal_moves()
+            for m in l_moves:
+                node = self.Node(curr_node.game.forecast_move(m), m, curr_node.depth + 1)
+                curr_node.next.append(node)
+                q.put(node)
+        print "tree generated", self.time_left()
+
     def minimax(self, game, depth=float("inf"), maximizing_player=True):
-        # TODO: finish this function!
+        # stack = Queue.LifoQueue()
+        # Tree traversal for static evaluations and deciding best move
+        best_move = self.minimax_traversal(self.tree.root)
+        best_val = 0
         return best_move, best_val
 
     def alphabeta(game, depth=float("inf"), alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         # TODO: finish this function!
         return best_move, best_val
 
+    def minimax_traversal(self, curr_node):
+        best_score_yet = best_move_yet = None
+        if len(curr_node.next) == 0:
+            best_score_yet = self.utility(curr_node.game)
+            best_move_yet = curr_node.causing_move
+            return [best_score_yet, best_move_yet]
+
+        collect_moves = []
+        collect_scores = []
+        for nn in curr_node.next:
+            if self.time_left() < 20: break
+            result = self.minimax_traversal(nn)
+            collect_scores.append(result[0])
+            collect_moves.append(result[1])
+
+        if len(collect_scores) > 0:
+            ind = 0
+            if curr_node.depth % 2 == 0:
+                ind = collect_scores.index(max(collect_scores))
+            else:
+                ind = collect_scores.index(min(collect_scores))
+            best_score_yet = collect_scores[ind]
+            best_move_yet = collect_moves[ind]
+        else:
+            best_score_yet = self.utility(curr_node.next[0].game)
+            best_move_yet = curr_node.next[0].causing_move
+        return [best_score_yet, best_move_yet]
+
+
+    class Node():
+        def __init__(self, game, c_m, depth):
+            self.next = []
+            self.game = game
+            self.causing_move = c_m
+            self.depth = depth
+            self.score = 0
+
+    class GameTree():
+        def __init__(self, root):
+            self.root = root
 
 # The following are some basic tests you can use to sanity-check your code. You will also be provided with a test server to which you will be able to submit your agents later this week. Good luck!
 
@@ -135,7 +219,7 @@ from isolation import Board
 if __name__ == "__main__":
     r = RandomPlayer()
     h = CustomPlayer()
-    game = Board(h,r)
+    game = Board(h, r)
     game.play_isolation()
 
 
@@ -143,7 +227,7 @@ if __name__ == "__main__":
 
 """Example test you can run
 to make sure your basic evaluation
-function works."""
+function works.
 from isolation import Board
 
 if __name__ == "__main__":
@@ -164,4 +248,4 @@ if __name__ == "__main__":
     # so board gets a score of 16
     h = OpenMoveEvalFn()
     print('This board has a score of %s.'%(h.score(sample_board)))
-
+"""
