@@ -100,31 +100,55 @@ class CustomEvalFn():
 
 class CustomPlayer():
     # TODO: finish this class!
-    def __init__(self, search_depth=3, eval_fn=OpenMoveEvalFn()):
+    def __init__(self, search_depth=3, eval_fn=CustomEvalFn()):
         self.eval_fn = eval_fn
         self.search_depth = search_depth
-        self.legal_moves = []
+        # self.legal_moves = []
         self.time_left = None
         self.tree = None
 
-    """def move(self, game, legal_moves, time_left):
-        self.legal_moves = legal_moves
-        move_scores = []
-        for m in self.legal_moves:
-            move_scores.append(self.utility(game.forecast_move(m)))
-        best_move = self.legal_moves[move_scores.index(max(move_scores))]
-        # best_move, utility = self.minimax(game, depth=self.search_depth)
-        # you will eventually replace minimax with alpha-beta
-        print 'best move determined', best_move, max(move_scores)
-        return best_move"""
-
     def move(self, game, legal_moves, time_left):
+        self.time_left = time_left
+        move_scores = []
+        for m in legal_moves:
+            result = self.minimax(game.forecast_move(m), 1, False)
+            move_scores.append(result)
+        ind = move_scores.index(max(move_scores))
+        best_move = legal_moves[ind]
+        print 'best move determined', best_move, move_scores[ind], self.time_left()
+        return best_move
+
+    """def move(self, game, legal_moves, time_left):
         self.time_left = time_left
         self.legal_moves = legal_moves
         self.tree = self.GameTree(self.Node(game, None, 0))
         self.generate_tree(3)
         best_move, best_val = self.minimax(game, 3)
-        return best_move
+        return best_move"""
+
+    def minimax(self, game, depth=float("inf"), maximizing_player=True):
+        # Handle leaf node
+        if depth == self.search_depth:
+            return self.utility(game),
+        legal_moves = game.get_legal_moves()
+        if len(legal_moves) == 0:
+            return float("-inf"), (-1, -1)
+        move_scores = []
+        for m in legal_moves:
+            if self.time_left < 50:
+                break
+            result = self.minimax(game.forecast_move(m), 3, not maximizing_player)
+            move_scores.append(result)
+        # ind = move_scores.index(max(move_scores))
+        if maximizing_player:
+            best_val = max(move_scores)
+        else:
+            best_val = min(move_scores)
+        return best_val
+
+    def alphabeta(game, depth=float("inf"), alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
+        # TODO: finish this function!
+        return best_move, best_val
 
     def utility(self, game):
         
@@ -156,16 +180,7 @@ class CustomPlayer():
                 q.put(node)
         print "tree generated", self.time_left()
 
-    def minimax(self, game, depth=float("inf"), maximizing_player=True):
-        # stack = Queue.LifoQueue()
-        # Tree traversal for static evaluations and deciding best move
-        best_move = self.minimax_traversal(self.tree.root)
-        best_val = 0
-        return best_move, best_val
 
-    def alphabeta(game, depth=float("inf"), alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
-        # TODO: finish this function!
-        return best_move, best_val
 
     def minimax_traversal(self, curr_node):
         best_score_yet = best_move_yet = None

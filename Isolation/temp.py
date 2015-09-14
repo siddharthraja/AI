@@ -1,4 +1,4 @@
 import Queue
 
-a = []
-print a.index(max(a)), a[a.index(max(a))]
+a = True
+print a, not a
