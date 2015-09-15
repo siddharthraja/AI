@@ -1,4 +1,5 @@
 import Queue
 
-a = True
-print a, not a
+a = 566
+print type(a)
+print int(float(4) / 7 * 10000)

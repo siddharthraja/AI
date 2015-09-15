@@ -9,7 +9,7 @@
 # In[ ]:
 
 from random import randint
-import Queue
+import math
 
 class RandomPlayer():
     """Player that chooses a move randomly."""
@@ -17,8 +17,8 @@ class RandomPlayer():
         self.eval_fn = OpenMoveEvalFn()
 
     def move(self, game, legal_moves, time_left):
-        print time_left()
-        print self.eval_fn.score(game)
+        #print time_left()
+        #print self.eval_fn.score(game)
         if not legal_moves: return (-1,-1)
         return legal_moves[randint(0,len(legal_moves)-1)]
 
@@ -70,7 +70,7 @@ class HumanPlayer():
 class OpenMoveEvalFn():
     
     def score(self, game):
-        return len(game.get_legal_moves())#eval_func
+        return len(game.get_legal_moves())
 
 
 #     The following is a 
@@ -84,8 +84,22 @@ class OpenMoveEvalFn():
 class CustomEvalFn():
 
     def score(self, game):
-        return len(game.get_legal_moves())
+        count_active = len(game.get_legal_moves())
+        count_opp = len(game.get_opponent_moves())
+        if count_opp == 0: count_opp = 1
+        return int(float(count_active) / count_opp * 1000)
 
+    def score_max(self, game, move):
+        count_active = len(game.get_legal_moves())
+        count_opp = len(game.get_opponent_moves())
+        if count_opp == 0: count_opp = 1
+        return int(float(count_active) / count_opp * 1000)
+
+    def score_min(self, game, move):
+        count_active = len(game.get_legal_moves())
+        count_opp = len(game.get_opponent_moves())
+        if count_active == 0: count_active = 1
+        return int(float(count_opp) / count_active * 1000)
 
 # Implement a Player below that chooses a move using 
 #     your evaluation function and 
@@ -100,58 +114,125 @@ class CustomEvalFn():
 
 class CustomPlayer():
     # TODO: finish this class!
-    def __init__(self, search_depth=3, eval_fn=CustomEvalFn()):
+    # ab_depth = 3
+    def __init__(self, minimax_search_depth=3, eval_fn=CustomEvalFn()):
         self.eval_fn = eval_fn
-        self.search_depth = search_depth
-        # self.legal_moves = []
+        self.minimax_search_depth = minimax_search_depth
+        self.alphabeta_search_depth = 4
+        self.abort_time = 40
         self.time_left = None
+        self.legal_moves = None
         self.tree = None
+        self.moves_done = 0
 
     def move(self, game, legal_moves, time_left):
-        self.time_left = time_left
-        move_scores = []
-        for m in legal_moves:
-            result = self.minimax(game.forecast_move(m), 1, False)
-            move_scores.append(result)
-        ind = move_scores.index(max(move_scores))
-        best_move = legal_moves[ind]
-        print 'best move determined', best_move, move_scores[ind], self.time_left()
-        return best_move
-
-    """def move(self, game, legal_moves, time_left):
+        self.moves_done = self.moves_done + 1
         self.time_left = time_left
         self.legal_moves = legal_moves
-        self.tree = self.GameTree(self.Node(game, None, 0))
-        self.generate_tree(3)
-        best_move, best_val = self.minimax(game, 3)
-        return best_move"""
+        # best_score, best_move = self.minimax(game, 0)
+        self.alphabeta_search_depth = 4
+        # best_score, best_move = self.alphabeta(game, 0)
+        best_score, best_move = self.alphabeta_iterative_deepening(game)
+        print 'best move determined', best_move, best_score, self.time_left()
+        return best_move
+
 
     def minimax(self, game, depth=float("inf"), maximizing_player=True):
         # Handle leaf node
-        if depth == self.search_depth:
-            return self.utility(game),
-        legal_moves = game.get_legal_moves()
-        if len(legal_moves) == 0:
-            return float("-inf"), (-1, -1)
-        move_scores = []
-        for m in legal_moves:
-            if self.time_left < 50:
-                break
-            result = self.minimax(game.forecast_move(m), 3, not maximizing_player)
-            move_scores.append(result)
-        # ind = move_scores.index(max(move_scores))
-        if maximizing_player:
-            best_val = max(move_scores)
-        else:
-            best_val = min(move_scores)
-        return best_val
+        if depth == self.minimax_search_depth or self.time_left() < self.abort_time:
+            return self.utility(game), (-1, -1)
 
-    def alphabeta(game, depth=float("inf"), alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
-        # TODO: finish this function!
-        return best_move, best_val
+        if depth == 0:
+            legal_moves = self.legal_moves
+        else:
+            legal_moves = game.get_legal_moves()
+        # Just in case 
+        if len(legal_moves) == 0:
+            return self.utility(game), (-1, -1)
+        best_val = float("inf")
+        if maximizing_player:
+            best_val = float("-inf")
+
+        best_move = (-1, -1)
+
+        for m in legal_moves:
+            res_score, res_move = self.minimax(game.forecast_move(m), depth+1, not maximizing_player)
+            if maximizing_player:
+                if res_score > best_val:
+                    best_val = res_score
+                    best_move = m
+            else:
+                if res_score < best_val:
+                    best_val = res_score
+                    best_move = m
+
+        return best_val, best_move
+
+
+    def alphabeta(self, game, depth=float("inf"), alpha=float("-inf"), beta=float("inf"), maximizing_player=True, causing_move=()):
+        # Handle leaf node
+        if depth == self.alphabeta_search_depth or self.time_left() < self.abort_time:
+            return self.utility_alphabeta(game, causing_move, maximizing_player), causing_move
+
+        if depth == 0:
+            legal_moves = self.legal_moves
+        else:
+            legal_moves = game.get_legal_moves()
+
+        # Just in case 
+        if len(legal_moves) == 0:
+            return self.utility_alphabeta(game, causing_move, maximizing_player), causing_move
+
+        best_move = (-1, -1)
+        for m in legal_moves:
+            result, dummy = self.alphabeta(game.forecast_move(m), depth+1, alpha, beta, not maximizing_player)
+            if maximizing_player:
+                if result > alpha:
+                    alpha = result
+                    best_move = m
+                if result >= beta:
+                    break
+            else:
+                if result < beta:
+                    beta = result
+                    best_move = m
+                if result <= alpha:
+                    break
+        if maximizing_player:
+            return alpha, best_move
+        else:
+            return beta, best_move
+
+    def alphabeta_iterative_deepening(self, game):
+        # Handle leaf node
+        if self.moves_done < 3: self.alphabeta_search_depth = 1
+        else: self.alphabeta_search_depth = 1
+        result_score = best_score = 0
+        result_move = best_move = (-1, -1)
+
+        while (self.time_left() > 10 * self.alphabeta_search_depth or self.time_left() > (2 * self.abort_time)) and not(math.isinf(result_score)):
+            result_score, result_move = self.alphabeta(game, 0)
+            print "returned result from interation ", self.alphabeta_search_depth, result_score, result_move, self.time_left()
+            if result_score > best_score:
+                best_score = result_score
+                best_move = result_move
+            self.alphabeta_search_depth = self.alphabeta_search_depth + 1
+        return best_score, best_move
+
+
+    def utility_alphabeta(self, game, causing_move, max_player):
+        if game.is_winner(self):
+            return float("inf")
+
+        if game.is_opponent_winner(self):
+            return float("-inf")
+
+        if max_player:
+            return self.eval_fn.score_max(game, causing_move)
+        else:
+            return self.eval_fn.score_min(game, causing_move)
 
     def utility(self, game):
-        
         if game.is_winner(self):
             return float("inf")
 
@@ -159,70 +240,6 @@ class CustomPlayer():
             return float("-inf")
 
         return self.eval_fn.score(game)
-
-    def generate_tree(self, depth):
-        q = Queue.Queue()
-        q.put(self.tree.root)
-        above_depth = True
-        # Generate Game Tree from depth 2. Depth 1 done.
-        while not q.empty() and above_depth:
-            curr_node = q.get()
-            if curr_node.depth >= depth:
-                above_depth = False
-                continue
-            if curr_node == self.tree.root:
-                l_moves = self.legal_moves
-            else:
-                l_moves = curr_node.game.get_legal_moves()
-            for m in l_moves:
-                node = self.Node(curr_node.game.forecast_move(m), m, curr_node.depth + 1)
-                curr_node.next.append(node)
-                q.put(node)
-        print "tree generated", self.time_left()
-
-
-
-    def minimax_traversal(self, curr_node):
-        best_score_yet = best_move_yet = None
-        if len(curr_node.next) == 0:
-            best_score_yet = self.utility(curr_node.game)
-            best_move_yet = curr_node.causing_move
-            return [best_score_yet, best_move_yet]
-
-        collect_moves = []
-        collect_scores = []
-        for nn in curr_node.next:
-            if self.time_left() < 20: break
-            result = self.minimax_traversal(nn)
-            collect_scores.append(result[0])
-            collect_moves.append(result[1])
-
-        if len(collect_scores) > 0:
-            ind = 0
-            if curr_node.depth % 2 == 0:
-                ind = collect_scores.index(max(collect_scores))
-            else:
-                ind = collect_scores.index(min(collect_scores))
-            best_score_yet = collect_scores[ind]
-            best_move_yet = collect_moves[ind]
-        else:
-            best_score_yet = self.utility(curr_node.next[0].game)
-            best_move_yet = curr_node.next[0].causing_move
-        return [best_score_yet, best_move_yet]
-
-
-    class Node():
-        def __init__(self, game, c_m, depth):
-            self.next = []
-            self.game = game
-            self.causing_move = c_m
-            self.depth = depth
-            self.score = 0
-
-    class GameTree():
-        def __init__(self, root):
-            self.root = root
-
 # The following are some basic tests you can use to sanity-check your code. You will also be provided with a test server to which you will be able to submit your agents later this week. Good luck!
 
 # In[ ]:
@@ -232,7 +249,7 @@ to make sure your AI does better
 than random."""
 from isolation import Board
 if __name__ == "__main__":
-    r = RandomPlayer()
+    r = CustomPlayer()
     h = CustomPlayer()
     game = Board(h, r)
     game.play_isolation()
@@ -262,5 +279,4 @@ if __name__ == "__main__":
     # player 1 should have 16 moves available,
     # so board gets a score of 16
     h = OpenMoveEvalFn()
-    print('This board has a score of %s.'%(h.score(sample_board)))
-"""
+    print('This board has"""
