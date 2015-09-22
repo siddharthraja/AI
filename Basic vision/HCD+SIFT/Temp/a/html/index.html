@@ -1,0 +1,234 @@
+<html>
+<head>
+<title>Computer Vision Project</title>
+<link href='http://fonts.googleapis.com/css?family=Nunito:300|Crimson+Text|Droid+Sans+Mono' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" title="Default" href="styles/github.css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>  
+
+<link rel="stylesheet" href="highlighting/styles/default.css">
+<script src="highlighting/highlight.pack.js"></script>
+
+<style type="text/css">
+body {
+	margin: 0px;
+	width: 100%;
+	font-family: 'Crimson Text', serif;
+	font-size: 20px;
+	background: #fcfcfc;
+}
+h1 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 28px;
+	margin: 25px 0px 0px 0px;
+	text-transform: lowercase;
+
+}
+
+h2 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 32px;
+	margin: 15px 0px 35px 0px;
+	color: #333;	
+	word-spacing: 3px;
+}
+
+h3 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 26px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+h4 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 22px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+
+h5 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 18px;
+	margin: 10px 0px 10px 0px;
+	color: #111;
+	word-spacing: 2px;
+}
+
+p, li {
+	color: #444;
+}
+
+a {
+	color: #DE3737;
+}
+
+.container {
+	margin: 0px auto 0px auto;
+	width: 960px;
+}
+
+#header {
+	background: #333;
+	width: 100%;
+}
+
+#headersub {
+	color: #ccc;
+	width: 960px;
+	margin: 0px auto 0px auto;
+	padding: 20px 0px 20px 0px;
+}
+
+.chart {
+	width: 480px;
+}
+.lol {
+	font-size: 16px;
+	color: #888;
+	font-style: italic;
+}
+.sep {
+	height: 1px;
+	width: 100%;
+	background: #999;
+	margin: 20px 0px 20px 0px;
+}
+.footer{
+	font-size: 16px;
+}
+.latex {
+	width: 100%;
+}
+
+.latex img {
+	display: block;
+	margin: 0px auto 0px auto;
+}
+
+pre {
+	font-family: 'Droid Sans Mono';
+	font-size: 14px;
+}
+
+td img {
+  vertical-align: middle;
+}
+
+#contents a {
+}
+</style>
+<script type="text/javascript">
+    hljs.initHighlightingOnLoad();
+</script>
+</head>
+<body>
+<div id="header" >
+<div id="headersub">
+<h1>Arindam Bose <span style="color: #DE3737">(abose35)</span></h1>
+</div>
+</div>
+<div class="container">
+
+<h2>CS 4495 / 6476 Project 2: Local Feature Matching</h2>
+
+<!--<div style="float: right; padding: 20px">
+<img src="placeholder.jpg" />
+<p style="font-size: 14px">Example of a right floating element.</p>
+</div>-->
+
+<img src="img/notre_dame_matches.jpg" alt="">
+
+<p>This page is a project report for an implementation of the SIFT feature matching pipeline which is used to match distinct "features" of one image of an object to the same "features"  in a different image of the same object. The algorithm does this in three seperate stages.</p>
+
+<ol>
+<li>Find "interest points" which have a measure of uniqueness and can potentially be localized in both images.</li>
+<li>Compute a descriptor at each "interest point".</li>
+<li>Compare the descriptors in both the images and find matches for similar descriptors.</li>
+</ol>
+
+<p>The rest of the report will go over each of the stages in the pipeline in detail and provide the results obtained using the provided notre_dame sample images.</p>
+
+<div style="clear:both">
+<h3>Identifying interest points</h3>
+
+<p>This implementation uses the Harris corner detector to to find potential points of interest in the images. The Harris corner detector operates on the principle of "cornerness" of a localized section of the image. Harris defines
+	a pixel beaing a corner if gradients arond the image show change in both the X and Y directions around pixel. A naive implementation of this would need a sliding window in X and Y at each pixel and would be incredibly slow.
+	An approximation of the above operation can be performed with just image derivatives and by computing a Moment matrix and thresholding values in that moment matrix.
+</p>
+
+<p>In my implementation I threshold the values in the moment matrix at 0.0005, values greater than that are considered corners. I then perform local non-maximal supression by silding a window across the image and supressing all values that are not maximal in the window.
+	I also blur the image initally with a gaussian to reduce the effect of noise. The red dots in the images below visualize the corners in the image.
+</p>
+<img src="img/notre_dame1_corners.jpg" alt="">
+<img src="img/notre_dame2_corners.jpg" alt="">
+<h3>Computing the descriptor at each corner</h3>
+<p>
+	I have implemented a slightly modified modified version of the standard SIFT descriptor that does not take into account the orientation at each feature. Each descriptor is computed as follows:
+	<ol>
+		<li>Use oriented Sobel filter's  to get X and Y image gradients.</li>
+		<li>Take a 1x16 subwindow around each interest point for both the X and Y gradient images.</li>
+		<li>Compute the (0, 2PI) normalized orientation for each pixel using atan2()</li>
+		<li>Use <code> [ 0 pi/4 pi/2 3*pi/4 pi 5*pi/4 3*pi/2 7*pi/4 2*pi] - (pi/8) </code> as bins to create a histogram for each 4x4 subwindow within the 16x16 window.</li>
+		<li>Normalize the histogram, clamp values to 0.2 and normalize again.</li>
+		<li>Reshape the vector into an 1x128 vector.</li>
+	</ol>
+</p>
+
+<h3>Matching SIFT feature descriptors</h3>
+ <p> I use the simple ratio rest implementation to match features, with the threshold set 0.85 ofr the ration between the eulidean distances. Provides decent results for the provided notre dame image pair. 22 good matches and 2 mismatches.</p>
+ 
+ <img src="img/notre_dame_accuracy.jpg" alt="">
+ 
+ <h3>Tweaks</h3>
+<p>I performed some minor tweaks to improve the algorithms' accuracy, I later switched out the oriented sobels used to compute the derivates Matlab's inbuilt gradirnt() function and also lowered my threshold for feature matching to 0.82.</p>
+
+<p>notre_dame now has 11 good matches with 0 bad matches</p> 
+<img src="img/notre_dame_accuracy2.jpg" alt="">
+
+<p>Rushmore, though shows 2 incoreect matches, on closer inspection actually reveals the two mismatches to be correct</p>
+<img src="img/rushmore_accuracy.jpg" alt="">
+ 
+<!--  
+<pre><code>
+%example code
+for i = 1:length(offset)
+    source = imread(sprintf('%s/source_%02d.jpg',data_dir,i));
+    mask   = imread(sprintf('%s/mask_%02d.jpg',data_dir,i));
+    target = imread(sprintf('%s/target_%02d.jpg',data_dir,i));
+
+</code></pre>
+
+<h3>Results in a table</h3>
+
+<table border=1>
+<tr>
+<td>
+<img src="placeholder.jpg" width="24%"/>
+<img src="placeholder.jpg"  width="24%"/>
+<img src="placeholder.jpg" width="24%"/>
+<img src="placeholder.jpg" width="24%"/>
+</td>
+</tr>
+
+<tr>
+<td>
+<img src="placeholder.jpg" width="24%"/>
+<img src="placeholder.jpg"  width="24%"/>
+<img src="placeholder.jpg" width="24%"/>
+<img src="placeholder.jpg" width="24%"/>
+</td>
+</tr>
+
+</table>
+
+<div style="clear:both" >
+<p> 	Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>-->
+</div>
+</body>
+</html>
