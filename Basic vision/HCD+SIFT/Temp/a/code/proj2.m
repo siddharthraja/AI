@@ -23,12 +23,12 @@ close all
 % for this project), but you will need local features at multiple scales to
 % handle harder cases.
 % imageBase = imread('../data/base.jpg');
-% % % imageBase_bw = rgb2gray(imageBase);
+% % % % imageBase_bw = rgb2gray(imageBase);
 image1 = imread('../data/Notre Dame/921919841_a30df938f2_o.jpg');
 image2 = imread('../data/Notre Dame/4191453057_c86028ce1f_o.jpg');
 eval_file = '../data/Notre Dame/921919841_a30df938f2_o_to_4191453057_c86028ce1f_o.mat';
 
-%This pair is relatively easy
+% This pair is relatively easy
 % image1 = imread('../data/Mount Rushmore/9021235130_7c2acd9554_o.jpg');
 % image2 = imread('../data/Mount Rushmore/9318872612_a255c874fb_o.jpg');
 % eval_file = '../data/Mount Rushmore/9021235130_7c2acd9554_o_to_9318872612_a255c874fb_o.mat';

@@ -24,27 +24,69 @@ function [matches, confidences] = match_features(features1, features2)
 
 
 %Initialize
-matches = zeros(length(features1) , 2);
-confidences = zeros(length(features1),1);
-
-threshold = 0.9;
-for i = 1:length(features1)
-    distances = sqrt(sum((repmat(features1(i,:),length(features2),1)-features2).^2,2));
-    [dists,indices] = sort(distances,'ascend');
-    ratio = dists(1)/dists(2);
-    if ratio < threshold
-        matches(i,:) = [i indices(1)];
-        confidences(i) = 1-ratio;
-    end
-end
-
-matches(all(matches==0,2),:)=[];
-confidences(all(matches==0,2),:)=[];
+% % matches = zeros(length(features1) , 2);
+% % confidences = zeros(length(features1),1);
+% % 
+% % threshold = 0.875;
+% % for i = 1:length(features1)
+% %     distances = sqrt(sum((repmat(features1(i,:),length(features2),1)-features2).^2,2));
+% %     [dists,indices] = sort(distances,'ascend');
+% %     ratio = dists(1)/dists(2);
+% %     if ratio < threshold
+% %         matches(i,:) = [i indices(1)];
+% %         confidences(i) = 1-ratio;
+% %     end
+% % end
+% % 
+% % matches(all(matches==0,2),:)=[];
+% % confidences(all(matches==0,2),:)=[];
 % Sort the matches so that the most confident onces are at the top of the
 % list. You should probably not delete this, so that the evaluation
 % functions can be run on the top matches easily.
 % [confidences, ind] = sort(confidences, 'descend');
 % matches = matches(ind,:);
+% #################################################################################################################
+	f1 = length(features1);
+	f2 = length(features2);
+	matches = zeros(f1, 2);
+	confidences = zeros(f1, 1);
+    distances = zeros(f2, f1);
+    threshold = 0.865;
+	% find the euclidian distance between each pair of descriptors in feature
+	% space
 
-% matches = matches(1:15, :);
-% confidences = confidences(1:15);
+	for i = 1:f1
+	    for j = 1:f2
+	        distances(j, i) = norm(features1(i, :) - features2(j, :));
+            [sorted_distances, inds] = sort(distances);
+            ratio = sorted_distances(1, i) / sorted_distances(2, i);
+            if ratio < threshold
+                matches(i, :) = [i, inds(1, i)];
+                confidences(i) = 1 - ratio;
+            end
+	    end
+	end
+
+
+% 	[sorted_distances, inds] = sort(distances); % sort distances in ascending order
+% 
+% 	% calculate ratio of nearest neighbor to second nearest neighbor
+% 	% if above threshold, add to matches list and save ratio as confidence value
+% 	for i = 1 : f1
+% 	    ratio = sorted_distances(1, i) / sorted_distances(2, i);
+% 	    if ratio < threshold
+% 	        matches(i, :) = [i, inds(1, i)];
+% 	        confidences(i) = 1 - ratio;
+% 	    end
+% 	end
+
+	% keep only those that matched
+	match_inds = find(confidences > 0);
+	matches = matches(match_inds, :);
+	confidences = confidences(match_inds);
+
+	% Sort the matches so that the most confident onces are at the top of the list
+	[confidences, ind] = sort(confidences, 'descend');
+	matches = matches(ind, :);
+
+end

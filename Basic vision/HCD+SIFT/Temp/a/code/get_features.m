@@ -14,7 +14,7 @@
 % particular orientations you can add input arguments.
 
 % 'features' is the array of computed features. It should have the
-%   following size: [length(x) x feature dimensionality] (e.g. 128 for
+%   following size: [f_number x feature dimensionality] (e.g. 128 for
 %   standard SIFT)
 
 function [features] = get_features(image, x, y, feature_width)
@@ -53,31 +53,26 @@ function [features] = get_features(image, x, y, feature_width)
 % feature vector to some power that is less than one.
 
 % Placeholder that you can delete. Empty features.
-gy = fspecial('sobel');
-gx = gy';
-% Image gradients
-[Ix , Iy] = gradient(image);
 
-%witghting for the window
-weight = fspecial('Gaussian', feature_width , feature_width/2);
-winOffset = feature_width/2 ;
 
-%preallocate features
-features = zeros(length(x), 128);
+f_number = length(x);
+weight = fspecial('Gaussian', feature_width , feature_width/2); % window weights
+woff = feature_width/2; % window offset
+features = zeros(f_number, 128);
 
-%bin edges for histogram
+% bin edges for histogram
 bins = [ 0 pi/4 pi/2 3*pi/4 pi 5*pi/4 3*pi/2 7*pi/4 2*pi] - (pi/8);
-
+% bins = [0,pi/8,pi/4,pi*3/8,pi/2,5*pi/8,3*pi/4,7*pi/8,pi,9*pi/8,5*pi/4,11*pi/8,3*pi/2,13*pi/8,7*pi/4,15*pi/8,2*pi];
+[Ix , Iy] = gradient(image);
 %Iterate over all interest points
-for i=1:length(x)
-    x_i = y(i);
-    y_i = x(i);
-    
+
+for i=1:f_number
     %feature at this keypoint
-    featureI = zeros(1,128);
+    f_block = zeros(1,128);
     %get gradients in the window
-    windowIx = Ix(x_i-winOffset+1:x_i+winOffset, y_i-winOffset+1:y_i+winOffset);
-    windowIy = Iy(x_i-winOffset+1:x_i+winOffset, y_i-winOffset+1:y_i+winOffset);
+    windowIx = Ix(y(i)-woff+1:y(i)+woff, x(i)-woff+1:x(i)+woff);
+    windowIy = Iy(y(i)-woff+1:y(i)+woff, x(i)-woff+1:x(i)+woff);
+
     %weight window by gaussian
     
     windowIx = windowIx .* weight;
@@ -105,9 +100,9 @@ for i=1:length(x)
             %renormalize
             tempHist = tempHist/norm(tempHist);
  
-            featureI(binCount:binCount+7) = tempHist;
+            f_block(binCount:binCount+7) = tempHist;
             
-            binCount=binCount + 8;
+            binCount = binCount + 8;
             
             
             
@@ -115,7 +110,7 @@ for i=1:length(x)
         end
     end
     
-    features(i, :) = featureI;
+    features(i, :) = f_block;
     
     
 end
