@@ -27,7 +27,7 @@ function [matches, confidences] = match_features(features1, features2)
 matches = zeros(length(features1) , 2);
 confidences = zeros(length(features1),1);
 
-threshold = 0.82;
+threshold = 0.9;
 for i = 1:length(features1)
     distances = sqrt(sum((repmat(features1(i,:),length(features2),1)-features2).^2,2));
     [dists,indices] = sort(distances,'ascend');
