@@ -54,70 +54,55 @@ function [features] = get_features(image, x, y, feature_width)
 
 % Placeholder that you can delete. Empty features.
 
-
-f_number = length(x);
-weight = fspecial('Gaussian', feature_width , feature_width/2); % window weights
-woff = feature_width/2; % window offset
-features = zeros(f_number, 128);
-
-% bin edges for histogram
-bins = [ 0 pi/4 pi/2 3*pi/4 pi 5*pi/4 3*pi/2 7*pi/4 2*pi] - (pi/8);
-% bins = [0,pi/8,pi/4,pi*3/8,pi/2,5*pi/8,3*pi/4,7*pi/8,pi,9*pi/8,5*pi/4,11*pi/8,3*pi/2,13*pi/8,7*pi/4,15*pi/8,2*pi];
-[Ix , Iy] = gradient(image);
-%Iterate over all interest points
-
-for i=1:f_number
-    %feature at this keypoint
-    f_block = zeros(1,128);
-    %get gradients in the window
-    windowIx = Ix(y(i)-woff+1:y(i)+woff, x(i)-woff+1:x(i)+woff);
-    windowIy = Iy(y(i)-woff+1:y(i)+woff, x(i)-woff+1:x(i)+woff);
-
-    %weight window by gaussian
+    f_number = length(x);
+    g = fspecial('Gaussian', feature_width , feature_width/2);
+    gw = fspecial('Gaussian', feature_width/2 , 2); % window weights
+    features = zeros(f_number, 128);
+    win_step = 16;
+    subwin_step = 4;
+    bins = [0:45:360] * pi/180; % buckets
+    % angle_bins = [-180:45:180];
+    % [Ix , Iy] = gradient(image); 
+    [magnitudes, angles] = imgradient(image);
+    angles = angles + 180;
+    angles = angles .* pi/180;
+    magnitudes = imfilter(magnitudes, gw);
     
-    windowIx = windowIx .* weight;
-    windowIy = windowIy .* weight;
-    %Iterate over each window in in the 4x4 grid
-    binCount = 1;
-    for subWinI=1:4:13
-        for subWinJ=1:4:13
-            subWindowIx = windowIx(subWinI:subWinI+3, subWinJ:subWinJ+3);
-            subWindowIy = windowIy(subWinI:subWinI+3, subWinJ:subWinJ+3);
-            %column vector of all gradients at each pixel
-            subWinGradients = [subWindowIx(:), subWindowIy(:)];
-            angles = zeros(length(subWinGradients), 1);
-            for angleI=1:length(angles)
-                angles(angleI) = mod(atan2(subWinGradients(angleI,2), subWinGradients(angleI,1)), 2*pi);
+    for i=1:f_number
+        descriptors = zeros(1,128); 
+        step = 1;
+        iterator = 1:subwin_step:win_step;
+        
+        win = angles(y(i)-feature_width/2+1 : y(i)+feature_width/2, x(i)-feature_width/2+1 : x(i)+feature_width/2);
+
+%         disp(size(image))
+%         disp('winwinwinwin\n')
+%         disp((win))
+%         disp('magnitudesmagnitudes\n')
+%         disp((magnitudes))
+%         disp('anglesanglesangles\n')
+%         disp((angles))
+        
+        
+        for I = iterator
+            for J = iterator
+                subwin_ang = win(I:I + subwin_step - 1, J:J + subwin_step - 1);
+                % subwin_mag = magnitudes(I:I + subwin_step - 1, J:J + subwin_step - 1);
+                orientations = subwin_ang(:);
+                % ang = zeros(length(orientations), 1);               
+                hist = histcounts(orientations', bins);  
+                % Normalize, threshold and renormalize
+                hist = hist / norm(hist);
+                hist(hist > 0.2) = 0.2;
+                hist = hist / norm(hist);
+                descriptors(step:step+7) = hist;
+                step = step + 8;
+                
             end
-            %reshape angles
-            angles = angles';
-            tempHist = histcounts(angles, bins);
-
-            %normalize to 1
-            tempHist = tempHist/norm(tempHist);
-            %clamp to 0.2
-            tempHist(tempHist > 0.2) = 0.2;
-            %renormalize
-            tempHist = tempHist/norm(tempHist);
- 
-            f_block(binCount:binCount+7) = tempHist;
-            
-            binCount = binCount + 8;
-            
-            
-            
-            
         end
-    end
-    
-    features(i, :) = f_block;
-    
-    
-end
 
-
-
-
+        features(i, :) = descriptors;
+    end    
 end
 
 

@@ -57,10 +57,9 @@ function [x, y, confidence, scale, orientation] = get_interest_points(image, fea
     r_max = colfilt(R,[3 3],'sliding',@max); % find neighborhood max
     r_suppressed = R.*(R == r_max);  % suppress non-max
     [y, x] = find(r_suppressed); 
-
+    
     figure(1);imshow(image);
     viscircles([x, y], ones(size([x, y],1),1));
-
 
 end
 
