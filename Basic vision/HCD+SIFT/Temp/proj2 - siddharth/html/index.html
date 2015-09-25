@@ -1,0 +1,264 @@
+<html>
+<head>
+<title>Computer Vision Project - Siddharth Raja</title>
+<link href='http://fonts.googleapis.com/css?family=Nunito:300|Crimson+Text|Droid+Sans+Mono' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" title="Default" href="styles/github.css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>  
+
+<link rel="stylesheet" href="highlighting/styles/default.css">
+<script src="highlighting/highlight.pack.js"></script>
+
+<style type="text/css">
+body {
+	margin: 0px;
+	width: 100%;
+	font-family: 'Crimson Text', serif;
+	font-size: 20px;
+	background: #fcfcfc;
+}
+h1 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 28px;
+	margin: 25px 0px 0px 0px;
+	text-transform: lowercase;
+
+}
+
+h2 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 32px;
+	margin: 15px 0px 35px 0px;
+	color: #333;	
+	word-spacing: 3px;
+}
+
+h3 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 26px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+h4 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 22px;
+	margin: 10px 0px 10px 0px;
+	color: #333;
+	word-spacing: 2px;
+}
+
+h5 {
+	font-family: 'Nunito', sans-serif;
+	font-weight: normal;
+	font-size: 18px;
+	margin: 10px 0px 10px 0px;
+	color: #111;
+	word-spacing: 2px;
+}
+
+p, li {
+	color: #444;
+}
+
+a {
+	color: #DE3737;
+}
+
+.container {
+	margin: 0px auto 0px auto;
+	width: 960px;
+}
+
+#header {
+	background: #333;
+	width: 100%;
+}
+
+#headersub {
+	color: #ccc;
+	width: 960px;
+	margin: 0px auto 0px auto;
+	padding: 20px 0px 20px 0px;
+}
+
+.chart {
+	width: 480px;
+}
+.lol {
+	font-size: 16px;
+	color: #888;
+	font-style: italic;
+}
+.sep {
+	height: 1px;
+	width: 100%;
+	background: #999;
+	margin: 20px 0px 20px 0px;
+}
+.footer{
+	font-size: 16px;
+}
+.latex {
+	width: 100%;
+}
+
+.latex img {
+	display: block;
+	margin: 0px auto 0px auto;
+}
+
+pre {
+	font-family: 'Droid Sans Mono';
+	font-size: 14px;
+}
+
+td img {
+  vertical-align: middle;
+}
+
+#contents a {
+}
+</style>
+<script type="text/javascript">
+    hljs.initHighlightingOnLoad();
+</script>
+</head>
+<body>
+<div id="header" >
+<div id="headersub">
+<h1>Siddharth Raja <span style="color: #DE3737">(sraja9)</span></h1>
+</div>
+</div>
+<div class="container">
+
+<h2>CS 4495 / 6476 Project 2: Local Feature Matching</h2>
+
+<div style="float: right; padding: 20px">
+
+</div>
+
+<p> This project deals with local feature matching between two images, which is a multi-step process. The process consists of the following steps:<br/>
+	<ol>
+		<li>Interest Point Detection</li>
+		<li>Local Feature Description for each of the detected interest points</li>
+		<li>Feature Matching between the two images</li>
+	</ol>
+		
+ </p>
+
+
+
+<div style="clear:both">
+<h3>Interest Points Detection</h3>
+
+<p> Here I implement the Harris Corner Detection to get key points in images which can be found in get_interest_points.m. The algorithm involves the following steps:
+	<ol>
+		<li>Blur the image with a gaussian filter and then obtain the gradient of the image along the x and y directions. To do this I experimented with sobel and prewitt masks but obtained slightly (~1%) better results with the prewitt filter.</li>
+		<li>Compute the product of the gradients Ix and Iy and filting each of them with a gaussian to obtain Ix2 and Iy2 respectively. Similar procedure to get IxIy. Now we have all the components to calculate the R which is the Harris Cornerness measure.</li>
+		<li>To calculate R, I used the Cornerness measure given by Brown, Szeliski, and Winder (2005) which is Szeliski (4.11) equation. <br/>
+			R = (Ix2.*Iy2 - Ixy.^2)./(Ix2 + Iy2);<br/>
+			This measure avoids using the alpha value which may have to be hand-tuned. I did get some improvements with this R measure also. For the Notre Dame Image my good matches increased by a few (about 5% more) and the bad matches remained roughly the same.
+		</li>
+		<li>Then I threshold the R values to turn them to 0 if they are below the threshold. Also I suppress the values near the edges.</li>
+		<li>Finally I use the colfilt() operation in matlab to run the non-maximal suppression and get rid of non-maximal points inside the window of 3x3.</li>
+	</ol>
+	<pre><code>
+	% Code snippet for thresholding, suppressing near edges and Non-maximal suppression
+	R(R < threshold) = 0;
+	r_dim = size(R);
+	R(1: feature_width, :) = 0;R(r_dim(1) - feature_width: r_dim(1), :) = 0; % suppression of outputs near edges
+	R(:, 1:feature_width) = 0;R(:, r_dim(2) - feature_width:r_dim(2)) = 0; % supp continued
+	r_max = colfilt(R,[3 3],'sliding',@max); % find neighborhood max
+	r_suppressed = R.*(R == r_max);  % suppress non-max
+
+	</code></pre>
+
+</p>
+
+
+
+
+<h3>Feature Description</h3>
+
+<p> For the feature description part I followed the SIFT technique as described in the Szeliski book. 
+	<br/>I initially started off by calculating the gradient of the entire image using the imgradient() function and obtaining the magnitudes and gradients of the image. Then I create a 16 x 16 window around each of the obtained keypoints in the interest point detection step and this window is further divided into sub-windows of 4 x 4. 
+	<br/>For each pixel in this 4 x 4 block I get the gradient from the matrix of gradients calculated previously and add it to a histogram which has 8 bins from a range of 0 to 2pi and the gradient values go into the corresponding bin in the histogram. This histogram is then normalized, clipped to 0.2 and then renormalized as suggested in Szeliski.
+	Thus the resulting feature vector for each keypoint is of size 4 x 4 x 8 = 128.
+	<br/>One thing I did not implement here was the 'soft distribution' of the weighted magnitudes to the histogram for the 16 x 16 window using trilinear interpolation technique as described in Szeliski. I couldn't figure out the correct implementation for this step and regardless, as you will see later, my results are very promising even without this.
+
+	<pre><code>
+	% Code snippet that deals with creation of windows and subwindows 
+	% Then the binning of the gradient values is carried out and finally the normalization, clipping and renormalizing
+	step = 1;iterator = 1:subwin_step:win_step;
+	win = angles(y(i)-feature_width/2+1 : y(i)+feature_width/2, x(i)-feature_width/2+1 : x(i)+feature_width/2);
+	for I = iterator
+		for J = iterator
+			subwin_ang = win(I:I + subwin_step - 1, J:J + subwin_step - 1);
+			% subwin_mag = magnitudes(I:I + subwin_step - 1, J:J + subwin_step - 1);
+			orientations = subwin_ang(:);
+			% ang = zeros(length(orientations), 1);               
+			hist = histcounts(orientations', bins);  
+			% Normalize, threshold and renormalize
+			hist = hist / norm(hist);
+			hist(hist > 0.2) = 0.2;
+			hist = hist / norm(hist);
+			descriptors(step:step+7) = hist;
+			step = step + 8;
+		end
+	end
+	features(i, :) = descriptors;
+	</code></pre>
+</p>
+
+
+<h3>Feature Matching</h3>
+
+<p> The feature matching part was relatively simpler compared to the previous two steps. Here I calculate the euclidean distance between all pairs of features. Then I sort column-wise for each feature to obtain the nearest and second-nearest features. This is then used to get the ratio of nearest by second-nearest and discard all matches greater than the threshold. My threshold value is around 0.85. I moved it around a lot but finally settled on 0.85. Keeping it around 0.8 would give me too few matches (less than 50) and 0.9 would go upto 500 which is unnecessary.<br/>
+Here the ratio test greatly improved my accuracy from like ~50% to almost 80%. Also I had initially commented out the code to sort my confidences in the end. This also greatly improved the accuracy by 10%.
+	<pre><code>
+	% Code snippet that deals with calculating the euclidean distances and performing the ratio test. 
+	for i = 1:f1
+	    temp_mat = repmat(features1(i,:), f2, 1);   
+	    distances = sqrt(sum((temp_mat - features2).^2, 2));
+	    [sortdist, indices] = sort(distances, 'ascend');
+	    ratio = sortdist(1) / sortdist(2);
+	    if ratio < threshold
+	        matches(i,:) = [i,indices(1)];
+	        confidences(i) = 1 - ratio;
+	    end
+	end
+	</code></pre>
+
+</p>
+
+<!--
+<h3>Results in a table</h3>
+
+<table border=1>
+<tr>
+<td>
+<img src="nd_vis_dots.jpg" width="33%"/>
+<img src="nd_vis_arrows.jpg"  width="33%"/>
+<img src="nd_eval.jpg" width="33%"/>
+
+</td>
+</tr>
+
+<tr>
+<td>
+<img src="placeholder.jpg" width="24%"/>
+<img src="placeholder.jpg"  width="24%"/>
+<img src="placeholder.jpg" width="24%"/>
+<img src="placeholder.jpg" width="24%"/>
+</td>
+</tr>
+
+</table>
+-->
+<div style="clear:both" ><p></p></div>
+</body>
+</html>
