@@ -1,6 +1,5 @@
-# CSE6242/CX4242 Homework 4 Pseudocode
-# You can use this skeleton code for Task 1 of Homework 4.
-# You don't have to use this code. You can implement your own code from scratch if you want.
+# Implementation of ID3 algorithm. Handles binning of continuous values.
+# author: siddharth
 
 import csv
 import numpy as np
