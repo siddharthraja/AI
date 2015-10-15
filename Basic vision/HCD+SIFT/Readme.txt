@@ -1,0 +1,1 @@
+Implementation of Harris Corner detection and SIFT feature description pipeline. Works on two images in the data folder for which ground truth values were known. New image pairs would require graound truth values which can be hand created using collect_ground_truth_corr.m.
