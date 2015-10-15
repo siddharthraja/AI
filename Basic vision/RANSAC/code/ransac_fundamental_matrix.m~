@@ -1,0 +1,79 @@
+% RANSAC Stencil Code
+% CS 4495 / 6476: Computer Vision, Georgia Tech
+% Witten by Henry Hu
+
+% Find the best fundamental matix using RANSAC on potentially matching
+% points
+
+% 'matches_a' and 'matches_b' are the Nx2 coordinates of the possibly
+% matching points from pic_a and pic_b. Each row is a correspondence (e.g.
+% row 42 of matches_a is a point that corresponds to row 42 of matches_b.
+
+% 'Best_Fmatrix' is the 3x3 fundamental matix
+% 'inliers_a' and 'inliers_b' are the Mx2 corresponding points (some subset
+% of 'matches_a' and 'matches_b') that are inliers with respect to
+% Best_Fmatrix.
+
+% For this section, use RANSAC to find the best fundamental matix by
+% randomly sample interest points. You would reuse
+% estimate_fundamental_matix() from part 2 of this assignment.
+
+% If you are trying to produce an uncluttered visualization of epipolar
+% lines, you may want to return no more than 30 points for either left or
+% ight images.
+
+function [ Best_Fmatrix, inliers_a, inliers_b] = ransac_fundamental_matix(matches_a, matches_b)
+
+% homogenization of points
+uv1a = [matches_a ones(size(matches_a ,1),1)];
+uv1b = [matches_b ones(size(matches_b ,1),1)];
+inliers_a = zeros(size(uv1a,1), 2);
+inliers_b = zeros(size(uv1a,1), 2);
+bestcount= 0;
+approx = 0.045;
+
+% looping for RANSAC
+for i = 1:10000
+    
+    % calculate F for 8 random points
+    ind = randperm(size(uv1a,1));
+    ind = ind(1:8);
+    a = uv1a(ind,:);
+    b = uv1b(ind,:);
+    
+    %Get fundamental matrix for these 8 matches
+    Ftemp = estimate_fundamental_matrix(a,b);
+    %Ftemp = estimate_fundamental_matix(uv1a(ind,:), uv1b(ind,:));
+    
+    % x * F * x' < approx (almost 0)
+    count = 0;
+    for j = 1:size(uv1a,1)
+        X = abs(uv1a(j,:) * Ftemp *  uv1b(j,:)');
+        if X <= approx
+            count = count + 1;
+        end
+    end
+    if count > bestcount
+        bestcount = count;
+        Best_Fmatrix = Ftemp;
+    end
+    %display(bestInliers);
+end
+
+% get inliers based on Best_Fmatrix and approx value
+for  i = 1:size(uv1a,1)
+     X = abs(uv1a(i,:) * Best_Fmatrix *  uv1b(i,:)');
+     if X <= approx
+         inliers_a(i, 1:2) = uv1a(i, 1:2);
+         inliers_b(i, 1:2) = uv1b(i, 1:2);
+     end
+end
+% display(inliers_a);
+inliers_a(all(inliers_a==0,2),:)=[];
+inliers_b(all(inliers_b==0,2),:)=[];
+if size(inliers_a, 1) > 200
+    
+end
+
+end
+
